@@ -3,6 +3,7 @@
 #include "diagnostics.h"
 #include "i2c_tools.h"
 #include "oled_ui.h"
+#include "doom/doom_integration.h"
 
 // ============================================================================
 // FORWARD DECLARATIONS
@@ -28,6 +29,8 @@ void setup() {
     LOG_INFO("Active Mode: I2C_SCAN");
   #elif defined MODE_OLED_TEST
     LOG_INFO("Active Mode: OLED_TEST");
+  #elif defined MODE_DOOM
+    LOG_INFO("Active Mode: DOOM (Integration Stub)");
   #endif
   
   LOG_INFO("========================================");
@@ -57,6 +60,11 @@ void loop() {
   
   #ifdef MODE_OLED_TEST
     // OLED Test mode runs in infinite loop in runMode()
+  #endif
+  
+  #ifdef MODE_DOOM
+    DoomIntegration::loop();
+    delay(50);
   #endif
 }
 
@@ -94,6 +102,11 @@ void runMode() {
         delay(100);
       }
     }
+    
+  #elif defined MODE_DOOM
+    DoomIntegration::setup();
+    // Doom runs in main loop
+    
   #else
     // Default to diagnostics if no mode selected
     Diagnostics::runDiagnosticMode();

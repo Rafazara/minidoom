@@ -28,7 +28,7 @@ SCL       →  GPIO 22
 
 ## Firmware Modes
 
-The firmware supports 3 selectable modes via build flags:
+The firmware supports 4 selectable modes via build flags:
 
 ### 1. **MODE_DIAG** (Default)
 Comprehensive ESP32 diagnostic information:
@@ -51,6 +51,14 @@ Complete system test with OLED display:
 - Shows real-time system status (ESP32 OK, OLED OK, I2C addr, uptime)
 - Falls back to diagnostic mode if OLED fails
 
+### 4. **MODE_DOOM** (Stub/Integration Phase)
+Doom Nano integration stub:
+- Initializes Doom engine memory and buffers
+- Prints tick/frame information
+- Currently: **NO rendering yet** (placeholder for Phase 2)
+- Logs: Memory allocation, frame count, heap usage
+- **Status:** Phase 1 ✓ (Integration stub), Phase 2 ⏳ (Rendering adapter)
+
 ## How to Change Mode
 
 Edit `platformio.ini` and modify the `build_flags` line:
@@ -60,6 +68,7 @@ build_flags =
     -D MODE_DIAG        ; Diagnostic mode (default)
     ; -D MODE_I2C_SCAN  ; Uncomment for I2C scanning
     ; -D MODE_OLED_TEST ; Uncomment for OLED test
+    ; -D MODE_DOOM      ; Uncomment for Doom Nano integration (stub)
 ```
 
 ## Building and Uploading
