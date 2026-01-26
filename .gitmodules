@@ -1,3 +1,0 @@
-[submodule "third_party/doom-nano"]
-	path = third_party/doom-nano
-	url = https://github.com/daveruiz/doom-nano.git
