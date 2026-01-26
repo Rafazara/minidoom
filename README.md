@@ -104,28 +104,52 @@ pio run -t upload && pio device monitor -b 115200
 
 ```
 mini-doom/
+├── .git/                   # Git repository (version control)
+├── .gitignore              # Git ignore rules (PlatformIO artifacts)
+├── .gitmodules             # Git submodule configuration
 ├── platformio.ini          # PlatformIO configuration
+├── README.md               # This file
+│
+├── scripts/
+│   └── pre_upload.py       # Pre-upload hook (COM port cleanup)
+│
 ├── src/
 │   ├── main.cpp            # Firmware entry point (setup/loop)
 │   ├── config.h            # Global configuration & macros
 │   ├── diagnostics.h/.cpp  # ESP32 diagnostic utilities
 │   ├── i2c_tools.h/.cpp    # I2C bus scanning & OLED detection
 │   └── oled_ui.h/.cpp      # OLED display rendering
+│
 ├── include/                # Optional: header files
 ├── lib/                    # Optional: custom libraries
+├── test/                   # Optional: test files
+│
 ├── third_party/
-│   └── doom-nano/          # TODO: Doom Nano integration (future)
-└── README.md              # This file
+│   └── doom-nano/          # Doom Nano engine (as Git submodule)
+│       ├── .git/
+│       ├── doom-nano.ino
+│       ├── entities.h/.cpp
+│       ├── input.h/.cpp
+│       └── ... (19 files)
+│
+└── .vscode/
+    ├── tasks.json          # VS Code build/upload/monitor tasks
+    ├── launch.json         # Debug configuration
+    ├── c_cpp_properties.json
+    └── extensions.json
 ```
 
 ## Key Features
 
+✅ **Git Version Control** - Full Git repository with submodule support  
+✅ **Submodule Integration** - Doom Nano as Git submodule (automatic updates)  
 ✅ **Robust Error Handling** - Falls back gracefully if OLED fails  
 ✅ **Minimal Overhead** - No blocking operations (except scan mode)  
 ✅ **Professional Logging** - Prefixed, clear debug output  
 ✅ **Modular Design** - Easy to extend for Doom Nano integration  
 ✅ **I2C Auto-Detection** - Automatically finds OLED at 0x3C or 0x3D  
 ✅ **Zero OLED Dependency** - Runs flawlessly without display  
+✅ **Pre-Upload Hook** - Automatic COM port cleanup before upload  
 
 ## Dependencies
 
@@ -197,13 +221,36 @@ Automatically installed via PlatformIO.
 
 ## Future Work: Doom Nano Integration
 
-The `third_party/doom-nano/` folder is reserved for future Doom Nano engine integration.
+The `third_party/doom-nano/` folder contains the **Doom Nano engine** as a Git submodule.
+
+### Cloning with Submodules
+
+```bash
+# Clone repository including submodules
+git clone --recursive https://your-repo.git
+
+# Or, if already cloned, initialize submodules
+git submodule update --init --recursive
+```
+
+### Updating Doom Nano Submodule
+
+```bash
+cd third_party/doom-nano
+git pull origin master
+cd ../..
+git add third_party/doom-nano
+git commit -m "update doom-nano to latest version"
+```
+
+### Integration Roadmap
 
 Expected steps:
-1. Port Doom Nano source code
+1. Port Doom Nano source code into firmware
 2. Adapt rendering pipeline to 128x64 OLED constraints
-3. Implement input handling (button mapping)
-4. Optimize memory usage for ESP32 (~520KB available)
+3. Implement input handling (button mapping to GPIO pins)
+4. Optimize memory usage for ESP32 (~520KB available heap)
+5. Performance tuning (target 30 FPS)
 
 ## License
 
