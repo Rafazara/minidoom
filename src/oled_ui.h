@@ -12,6 +12,9 @@ namespace OLEDUI {
   void displayError(const char* errorMsg);
   void runOLEDTestMode();
   bool isInitialized();
+  
+  // Get reference to the display object (for direct rendering)
+  Adafruit_SSD1306* getDisplay();
 }
 
 #endif // OLED_UI_H
