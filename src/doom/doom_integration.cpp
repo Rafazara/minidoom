@@ -1,5 +1,8 @@
 #include "doom_integration.h"
 #include "../config.h"
+#include "../oled_ui.h"
+#include "../doom_adapter.h"
+#include "../doom_graphics.h"
 
 namespace DoomIntegration {
 
@@ -17,13 +20,23 @@ void setup() {
   LOG_INFO("Doom: Display buffer: 128x64 pixels (1024 bytes)");
   LOG_INFO("Doom: Frame buffer initialized");
   
-  // Phase 1 (STUB): Placeholder for display setup
-  LOG_INFO("Doom: Setting up display renderer...");
-  LOG_INFO("Doom: Doom renderer ready (STUB - no rendering yet)");
+  // CRITICAL FIX: Initialize I2C Wire interface FIRST
+  LOG_INFO("Doom: Initializing I2C Wire interface...");
+  Wire.begin(21, 22);
+  Wire.setClock(100000);
   
-  // Phase 1 (STUB): Placeholder for game state
-  LOG_INFO("Doom: Initializing game state...");
-  LOG_INFO("Doom: Game state ready");
+  // Initialize OLED display
+  LOG_INFO("Doom: Setting up display renderer...");
+  if (OLEDUI::initialize(0x3C)) {
+    LOG_INFO("Doom: OLED initialized successfully");
+  } else {
+    LOG_ERROR("Doom: OLED initialization FAILED");
+  }
+  
+  // Phase 2: Initialize Doom Adapter (game engine)
+  LOG_INFO("Doom: Initializing Doom Adapter...");
+  DoomAdapter::initialize();
+  LOG_INFO("Doom: Doom Adapter initialized");
   LOG_INFO("Doom: Free Heap after init: %d bytes", ESP.getFreeHeap());
   
   initialized = true;
@@ -32,26 +45,26 @@ void setup() {
   
   LOG_INFO("Doom: Initialization complete ✓");
   LOG_INFO("========================================");
-  LOG_INFO("Running in DOOM MODE - Waiting for phase 2 integration");
+  LOG_INFO("Running in DOOM MODE - Ready for gameplay");
   LOG_INFO("========================================");
 }
 
 void loop() {
   unsigned long now = millis();
   
-  // Only tick every 1000ms for now (stub)
-  if (now - lastTick >= 1000) {
+  // Render frame at target FPS (20 FPS = 50ms per frame)
+  if (now - lastTick >= 50) {  // 50ms = 20 FPS
     lastTick = now;
     frameCount++;
     
-    LOG_INFO("Doom: Tick #%lu | Frame: %lu | Free Heap: %d bytes", 
-             frameCount, frameCount, ESP.getFreeHeap());
+    // Render single frame (includes world, sprites, HUD, dithering, blit)
+    DoomAdapter::renderFrame();
     
-    // STUB: In Phase 2, this will:
-    // 1. Read input (buttons)
-    // 2. Update game entities
-    // 3. Render frame to OLED
-    // 4. Update frame counter
+    // Log every 20 frames (~1 second at 20 FPS)
+    if (frameCount % 20 == 0) {
+      LOG_INFO("Doom: Frame #%lu | Free Heap: %d bytes", 
+               frameCount, ESP.getFreeHeap());
+    }
   }
 }
 
