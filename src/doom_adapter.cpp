@@ -471,7 +471,9 @@ bool renderFrame() {
         48.0  // Limit effective world view height to top 48px
     );
 
+    #if MINI_DOOM_DEBUG
     Serial.println(F("[DOOM-ADAPTER] Raycast complete"));
+    #endif
 
     // Step 6: Copy raycasted world to graphics framebuffer
     const uint8_t* raycasted = DoomWorldRenderer::getWorldFramebuffer();
@@ -511,7 +513,9 @@ bool renderFrame() {
         g_player.plane.y
     );
 
+    #if MINI_DOOM_DEBUG
     Serial.println(F("[DOOM-ADAPTER] Sprites rendered"));
+    #endif
 
     // Step 10.5: Render HUD (Phase 2.11)
     renderHUDToFramebuffer(framebuffer);
@@ -525,10 +529,7 @@ bool renderFrame() {
     // Step 13: Render game feel micro-animations (Phase 3.4)
     DoomGameFeel::render(framebuffer, currentTime, g_player.health);
     
-    // Step 14: Blit framebuffer to OLED display
-    DoomGraphics::blitBufferToOLED();
-    
-    Serial.println(F("[DOOM-GFX] Frame blitted"));
+    // The caller presents every rendered state, including title and game over.
 
     return true;
 }
