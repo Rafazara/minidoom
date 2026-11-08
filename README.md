@@ -1,481 +1,213 @@
-# mini-doom: ESP32 + OLED + Doom Nano Integration
+# MINI-DOOM
 
-**Objective:** Professional test, validation, and execution pipeline for Doom Nano on ESP32 before full integration.
+A tiny Doom-inspired embedded game for ESP32 and monochrome OLED displays.
 
----
+MINI-DOOM combines a raycasting world, sprites, combat, a HUD, and title/game-over screens on a 128×64 display. It uses selected Doom Nano data and ideas; it is **not a port of the original Doom engine**.
 
-## 📋 Project Architecture
+## Status
 
-### System Components
+**Development baseline — software build recovered, hardware validation pending.**
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                      mini-doom                          │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │  ESP32-DevKit (240MHz, 8MB Flash, 520KB SRAM)   │  │
-│  └──────────────────────────────────────────────────┘  │
-│         │                                               │
-│         ├─ GPIO21/22 (I2C) ──────┐                      │
-│         │                         ▼                      │
-│         │                  ┌──────────────┐             │
-│         │                  │ SSD1306 OLED │             │
-│         │                  │ 128x64 pixels│             │
-│         │                  │ 0x3C / 0x3D  │             │
-│         │                  └──────────────┘             │
-│         │                                               │
-│         └─ UART0 (Serial) ──── USB (Debug/Monitor)     │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │  Firmware Modules                                │  │
-│  │  ─────────────────────────────────────────────  │  │
-│  │  • Diagnostics   (CPU, RAM, Flash, Reset info) │  │
-│  │  • I2C Tools     (Bus scanning, device detect)  │  │
-│  │  • OLED UI       (Display rendering, status)    │  │
-│  │  • Doom Engine   (Integration stub/ready)       │  │
-│  └──────────────────────────────────────────────────┘  │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
+- The `esp32doit-devkit-v1` firmware and isolated OLED diagnostic both compile.
+- Host test sources cover framebuffer packing and Doom Nano map decoding; the current Windows host lacks the GCC tools needed to run them.
+- No firmware from this recovery work has been uploaded or visually validated on the OLED.
+- A 20 FPS target is configured, but physical frame rate is not validated. The conservative 100 kHz I²C setting cannot transfer a full 1,024-byte frame within 50 ms.
 
-### Hardware Configuration
+See [release status](docs/RELEASE_STATUS.md) for the current decision and blockers.
 
-| Component | Pin | Protocol | Address | Status |
-|-----------|-----|----------|---------|--------|
-| ESP32 SDA | GPIO 21 | I2C | N/A | ✓ Configured |
-| ESP32 SCL | GPIO 22 | I2C | N/A | ✓ Configured |
-| OLED SSD1306 | I2C | I2C | 0x3C/0x3D | ✓ Auto-detect |
-| Serial UART0 | RX0/TX0 | UART | N/A | ✓ 115200 baud |
+## Capabilities
 
----
+Source inspection confirms implementations for:
 
-## 🔄 Operation Modes
+- 128×64, 1-bit SSD1306 page-format rendering.
+- Raycast walls with textures and ordered dithering.
+- Enemy and weapon sprites with a per-column depth buffer.
+- Movement, collision, combat, health, ammunition, and wave logic.
+- Title, gameplay, and game-over states.
+- Compile-time game and isolated OLED diagnostic environments.
 
-The firmware supports **4 operation modes** controlled by `build_flags` in `platformio.ini`:
+These are implementation capabilities, not a claim that every feature has passed hardware testing.
 
-### Mode 1: MODE_DIAG (Diagnostics)
+## Hardware baseline
 
-**Purpose:** System health monitoring and diagnostics.
+| Component | Validated configuration |
+|---|---|
+| MCU board | ESP32 DOIT DevKit V1; ESP32-D0WDQ6 observed during previous uploads |
+| Flash | 4 MB reported by PlatformIO |
+| Display | 128×64 SSD1306-compatible I²C OLED |
+| OLED address | `0x3C`, confirmed by a previous physical I²C scan |
+| I²C data | GPIO21 |
+| I²C clock | GPIO22 |
+| Power | OLED VCC at 3.3 V, common GND |
+| USB serial | COM7 previously used; 115200 baud monitor |
 
-**Behavior:**
-- Boot: Display ESP32 system information
-- Loop: Print heartbeat every 5 seconds
-- Output: CPU MHz, cores, heap (total/free/used), flash, chip revision, SDK version, reset reason, uptime
+Only the ESP32 and OLED are part of the confirmed baseline. Buttons, speakers, batteries, and other peripherals are optional future work, not assumed to be installed.
 
-**Build Flag:**
-```ini
-build_flags = -D MODE_DIAG
+## Wiring
+
+| OLED pin | ESP32 connection |
+|---|---|
+| GND | GND |
+| VCC | 3.3V |
+| SCL / SCK | GPIO22 |
+| SDA | GPIO21 |
+
+```text
+ESP32 DOIT DevKit V1                 OLED module
++-------------------+                +-----------+
+| 3.3V              |--------------->| VCC       |
+| GND               |--------------->| GND       |
+| GPIO22 (SCL)      |--------------->| SCL/SCK   |
+| GPIO21 (SDA)      |--------------->| SDA       |
+| USB               |<-- data/power--| Host PC   |
++-------------------+                +-----------+
 ```
 
-**Output Example:**
-```
-[mini-doom] ========================================
-[mini-doom] Active Mode: DIAGNOSTIC
-[mini-doom] ========== ESP32 SYSTEM INFO ==========
-[mini-doom] CPU Frequency: 240 MHz
-[mini-doom] CPU Cores: 2
-[mini-doom] Total Heap: 298468 bytes
-[mini-doom] Free Heap: 270892 bytes
-[mini-doom] Flash Size: 4 MB
-[mini-doom] Reset Reason: Power-On
-[mini-doom] Running in DIAGNOSTIC MODE
-[mini-doom] HEARTBEAT | Free Heap: 270892 bytes | Uptime: 5000 ms
-```
+Power down before changing wiring. ESP32 GPIO uses 3.3 V logic. See [the hardware guide](docs/HARDWARE.md) for power and safety notes.
 
----
-
-### Mode 2: MODE_I2C_SCAN (I2C Bus Scanning)
-
-**Purpose:** Discover and identify I2C devices on the bus.
-
-**Behavior:**
-- Boot: Initialize I2C bus (GPIO21/22)
-- Loop: Scan addresses 0x01-0x7E every 500ms
-- Output: Device addresses found, device count
-
-**Build Flag:**
-```ini
-build_flags = -D MODE_I2C_SCAN
-```
-
-**Output Example:**
-```
-[mini-doom] ========================================
-[mini-doom] Active Mode: I2C_SCAN
-[mini-doom] I2C Bus Initialized (SDA=21, SCL=22)
-[mini-doom] Running in I2C SCAN MODE
-[mini-doom] Scanning I2C devices every 500 ms...
-[mini-doom] Scanning I2C bus...
-[mini-doom] Device found at 0x3C
-[mini-doom] Total devices found: 1
-```
-
----
-
-### Mode 3: MODE_OLED_TEST (OLED Display Test)
-
-**Purpose:** Full OLED display validation with live system status.
-
-**Behavior:**
-- Boot: Auto-detect OLED address (0x3C primary, 0x3D secondary)
-- Loop: Update display every 500ms with system status
-- Fallback: If OLED not detected, automatically switch to MODE_DIAG
-
-**Build Flag:**
-```ini
-build_flags = -D MODE_OLED_TEST
-```
-
-**Display Output:**
-```
-=== mini-doom ===
-
-ESP32:  OK
-OLED:   OK
-I2C:    0x3C
-
-Uptime: 42s
-```
-
----
-
-### Mode 4: MODE_DOOM (Doom Nano - Framebuffer Rendering)
-
-**Purpose:** Doom Nano engine integration as pure renderer (Phase 2.1: Framebuffer only).
-
-**Behavior:**
-- Boot: Detect OLED, initialize graphics pipeline and Doom Nano adapter
-- Loop: Non-blocking frame rendering at 20 FPS (50ms throttle)
-- Output: [DOOM-CORE] initialization logs, continuous test pattern rendering
-- Display: OLED shows Doom Nano framebuffer (test pattern in Phase 2.1)
-
-**Build Flag:**
-```ini
-build_flags = -D MODE_DOOM
-```
-
-**Output Example:**
-```
-[mini-doom] ========================================
-[mini-doom] Active Mode: DOOM (Graphics Pipeline - PURE RENDERING)
-[mini-doom] ========================================
-
-[DOOM-GFX] Initializing graphics system...
-[DOOM-GFX] OLED detected at address: 0x3C
-[DOOM-GFX] OLED initialized successfully
-
-[DOOM-CORE] Initializing Doom Nano rendering engine...
-[DOOM-CORE] Phase 2.1: Framebuffer rendering mode
-[DOOM-CORE] [INFO] Doom Nano engine integrated as pure renderer
-
-[DOOM-GFX] Rendering Doom Nano framebuffer
-[DOOM-GFX] FPS target: 20 | Frame throttle: 50ms
-```
-
-**Status:** ✅ Phase 2.1 Complete - Ready for Phase 2.2 Engine Expansion
-[mini-doom] ========================================
-[mini-doom] Initializing Doom Nano...
-[mini-doom] Doom: Allocating memory buffers...
-[mini-doom] Doom: Frame buffer initialized
-[mini-doom] Doom: Initialization complete ✓
-[mini-doom] Running in DOOM MODE - Waiting for phase 2 integration
-[mini-doom] Doom: Tick #1 | Frame: 1 | Free Heap: 265432 bytes
-```
-
----
-
-## 🚀 Quick Start
+## Quick start
 
 ### Prerequisites
 
-- **PlatformIO CLI** installed
-- **ESP32-DevKit** board connected to **COM7** (configurable)
-- **SSD1306 OLED** display (128x64) connected via I2C (GPIO21/22)
-- **Python 3.x** (for pre-upload script)
+- PlatformIO Core available as `pio`.
+- Git with submodule support.
+- ESP32 board and OLED wired as above.
+- A USB data cable.
 
-### Installation & Building
+### Clone and build
 
-1. **Clone/Open Project:**
-   ```bash
-   cd ~/mini-doom
-   ```
-
-2. **Build firmware:**
-   ```bash
-   pio run
-   ```
-
-3. **Upload to ESP32:**
-   ```bash
-   pio run -t upload
-   ```
-
-4. **Monitor serial output:**
-   ```bash
-   pio device monitor -b 115200
-   ```
-
-5. **Complete cycle (build + upload + monitor):**
-   ```bash
-   pio run -t upload && pio device monitor -b 115200
-   ```
-
----
-
-## 🧪 Testing Pipeline
-
-### Test 1: System Diagnostics (MODE_DIAG)
-
-**Objective:** Validate ESP32 hardware and system resources.
-
-```bash
-# Edit platformio.ini:
-# build_flags = -D MODE_DIAG
-
-pio run -t upload
-pio device monitor -b 115200
+```powershell
+git clone --recurse-submodules https://github.com/Rafazara/minidoom.git
+cd minidoom
+git submodule update --init --recursive
+pio run -e esp32doit-devkit-v1
 ```
 
-**Expected Output:**
-- CPU frequency (240 MHz)
-- Available cores (2)
-- Total heap size
-- Free heap size
-- Flash size (4 MB)
-- Reset reason
-- Heartbeat every 5 seconds
+The configuration pins Espressif32 6.12.0, Adafruit GFX 1.13.0, and Adafruit SSD1306 2.5.17 to limit dependency drift.
 
----
+### Upload and monitor
 
-### Test 2: I2C Bus Scanning (MODE_I2C_SCAN)
+Check `upload_port` and `monitor_port` in `platformio.ini`; COM7 is a previous local setting, not a universal value. Close other serial-monitor sessions before uploading.
 
-**Objective:** Detect OLED and other I2C devices.
-
-```bash
-# Edit platformio.ini:
-# build_flags = -D MODE_I2C_SCAN
-
-pio run -t upload
-pio device monitor -b 115200
+```powershell
+pio run -e esp32doit-devkit-v1 -t upload
+pio device monitor -p COM7 -b 115200
 ```
 
-**Expected Output:**
-- I2C initialized on GPIO21/22
-- Device found at address 0x3C or 0x3D (OLED)
-- Scan repeats every 500ms
+Do not interpret a successful upload as a display-validation pass. Record the actual OLED behavior and serial output.
 
----
+More detail: [Build and flash](docs/BUILD_AND_FLASH.md).
 
-### Test 3: OLED Display Test (MODE_OLED_TEST)
+## Controls
 
-**Objective:** Validate OLED rendering and live status display.
+The firmware contains optional active-low button mappings using internal pull-ups:
 
-```bash
-# Edit platformio.ini:
-# build_flags = -D MODE_OLED_TEST
+| Action | GPIO |
+|---|---|
+| Forward | 32 |
+| Backward | 33 |
+| Strafe left | 25 |
+| Strafe right | 26 |
+| Fire / start / restart | 27 |
 
-pio run -t upload
-pio device monitor -b 115200
+No buttons are confirmed connected in the current hardware baseline. Without a Fire button, the normal game build remains on the title screen. Wiring and debounce behavior require physical validation before controls are described as working.
+
+## Architecture
+
+```text
+Input GPIO
+    |
+    v
+DoomAdapter: state, movement, combat, reset
+    |
+    +--> DoomWorldRenderer --> world framebuffer + depth buffer
+    |
+    +--> Sprite renderer --> composite framebuffer
+    +--> HUD / title / game-over / feedback overlays
+    |
+    v
+DoomGraphics: 128x64 page-format framebuffer
+    |
+    |  exact 1,024-byte copy; no bitmap reformatting
+    v
+Adafruit_SSD1306 heap buffer --> Wire / I2C --> OLED
 ```
 
-**Expected Output:**
-- OLED auto-detection message
-- Status screen on OLED display
-- Uptime updates every 500ms
+There are two project-owned 1,024-byte framebuffers: one for the world renderer and one for final composition. Adafruit SSD1306 allocates its own display buffer during `begin()`.
 
----
+See [Architecture](docs/ARCHITECTURE.md) and [Portability](docs/PORTABILITY.md).
 
-### Test 4: Doom Stub Integration (MODE_DOOM - Default)
+## Memory and performance
 
-**Objective:** Verify Doom engine stub is ready for Phase 2 integration.
+Measured for the recovered default build on this host:
 
-```bash
-# platformio.ini (default):
-# build_flags = -D MODE_DOOM
+| Metric | Result |
+|---|---:|
+| Static RAM reported by PlatformIO | 24,516 / 327,680 bytes (7.5%) |
+| Flash | 329,185 / 1,310,720 bytes (25.1%) |
+| Target frame rate | 20 FPS / 50 ms |
+| I²C clock | 100 kHz |
 
-pio run -t upload
-pio device monitor -b 115200
+PlatformIO's RAM figure does not include the display buffer allocated at runtime by Adafruit SSD1306. At 100 kHz, a full-frame transfer alone takes roughly 90 ms including protocol overhead, so 20 FPS requires hardware measurement and likely a validated faster I²C configuration. No physical FPS claim is made.
+
+## OLED diagnostic mode
+
+The isolated diagnostic does not run game logic. It cycles through blank/filled screens, coordinates, lines, checkerboard, border, distinct corner markers, text orientation, and a moving square.
+
+After obtaining approval to flash the device:
+
+```powershell
+pio run -e esp32doit-devkit-v1-oled-diag -t upload
+pio device monitor -p COM7 -b 115200
 ```
 
-**Expected Output:**
-- Doom initialization messages
-- Buffer allocation logs
-- Frame counter incrementing every 1000ms
-- Free heap status
+Return to the game by uploading the default environment:
 
----
-
-## 📝 File Structure
-
-```
-mini-doom/
-├── platformio.ini                 # Build configuration + mode selection
-├── README.md                      # This file
-│
-├── src/
-│   ├── main.cpp                  # Entry point + mode dispatcher
-│   ├── config.h                  # Hardware pins + build modes
-│   │
-│   ├── diagnostics.cpp           # System diagnostics implementation
-│   ├── diagnostics.h             # Diagnostics API
-│   │
-│   ├── i2c_tools.cpp             # I2C scanning + device detection
-│   ├── i2c_tools.h               # I2C tools API
-│   │
-│   ├── oled_ui.cpp               # OLED rendering + status display
-│   ├── oled_ui.h                 # OLED UI API
-│   │
-│   └── doom/
-│       ├── doom_integration.cpp   # Doom stub implementation
-│       └── doom_integration.h     # Doom API
-│
-├── scripts/
-│   └── pre_upload.py             # Pre-upload hooks (port ready check)
-│
-└── third_party/
-    └── doom-nano/                # Doom Nano source (Phase 2)
+```powershell
+pio run -e esp32doit-devkit-v1 -t upload
 ```
 
----
+No source edit is needed to switch environments. Follow the observation checklist in [OLED diagnostics](docs/OLED_DIAGNOSTICS.md).
 
-## 🔗 Boot Flow
+## Troubleshooting
 
-```
-POWER ON
-   ↓
-Serial Init (115200 baud)
-   ↓
-Print boot banner + active mode
-   ↓
-Module Initialization (Diagnostics, I2C)
-   ↓
-Mode Selection (build_flags):
-   ├─ MODE_DIAG      → Diagnostics::runDiagnosticMode()
-   ├─ MODE_I2C_SCAN  → I2CTools::runI2CScanMode()
-   ├─ MODE_OLED_TEST → OLEDUI::displayStatus() loop
-   └─ MODE_DOOM      → DoomIntegration::setup() → loop()
-   ↓
-Main Loop (mode-specific)
-```
+- **`avr/pgmspace.h` missing:** build the current recovery tree; the compatibility wrapper must be under `include/avr/pgmspace.h` and the submodule must be initialized.
+- **OLED not detected:** power down, verify 3.3 V/GND and SDA/SCL, then run an I²C scan. Address detection alone does not prove controller compatibility.
+- **Horizontal bands or fragmented graphics:** run the isolated diagnostic and record blank, filled, border, and corner results. Do not start by changing rotation.
+- **Blank title in normal mode:** verify that the firmware includes the title flush fix and that no I²C initialization error appears.
+- **Upload failed:** confirm the actual COM port and close serial-monitor programs.
+- **Native tests do not build:** install or expose a supported GCC/G++ host toolchain; the current host does not provide one.
 
----
+## Development roadmap
 
-## ⚙️ Configuration
+1. Run the OLED diagnostic on the physical module and capture each required result.
+2. Run the host tests with a supported native compiler.
+3. Validate normal title, gameplay, game-over, and reset behavior on hardware.
+4. Measure frame time and heap during gameplay; evaluate I²C speed only after the display is stable.
+5. Resolve project and upstream asset licensing before a public release.
+6. Prepare a release candidate only after the acceptance criteria pass.
 
-### platformio.ini
+## Documentation
 
-| Setting | Value | Purpose |
-|---------|-------|---------|
-| `platform` | `espressif32` | ESP32 platform |
-| `board` | `esp32doit-devkit-v1` | Board type |
-| `framework` | `arduino` | Arduino framework |
-| `upload_port` | `COM7` | USB serial port |
-| `monitor_port` | `COM7` | Serial monitor port |
-| `monitor_speed` | `115200` | Serial baud rate |
-| `upload_speed` | `460800` | Upload baud rate (fast) |
-| `build_flags` | `-D MODE_DOOM` | Active operation mode |
+- [Hardware and wiring](docs/HARDWARE.md)
+- [Build and flash](docs/BUILD_AND_FLASH.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [AVR-to-ESP32 portability](docs/PORTABILITY.md)
+- [OLED diagnostics](docs/OLED_DIAGNOSTICS.md)
+- [Testing and acceptance](docs/TESTING.md)
+- [Release status](docs/RELEASE_STATUS.md)
 
-### config.h
+Root-level phase reports are retained as historical development records. The guides above describe the current maintained baseline.
 
-| Define | Value | Purpose |
-|--------|-------|---------|
-| `OLED_SDA` | `21` | I2C data pin |
-| `OLED_SCL` | `22` | I2C clock pin |
-| `OLED_WIDTH` | `128` | Display width (pixels) |
-| `OLED_HEIGHT` | `64` | Display height (pixels) |
-| `OLED_ADDRESS_PRIMARY` | `0x3C` | Default OLED address |
-| `OLED_ADDRESS_SECONDARY` | `0x3D` | Alternate OLED address |
-| `HEARTBEAT_INTERVAL` | `5000` | Diagnostics heartbeat (ms) |
-| `I2C_SCAN_DELAY` | `500` | I2C scan interval (ms) |
-| `OLED_INIT_TIMEOUT` | `2000` | OLED init timeout (ms) |
+## Credits and licensing
 
----
+- [Doom Nano](https://github.com/daveruiz/doom-nano) by David Ruiz and contributors, included as a Git submodule at the pinned upstream revision.
+- Doom Nano credits raycasting learning material to [lodev.org](https://lodev.org/cgtutor) and identifies external sprite sources in its README.
+- [Adafruit GFX](https://github.com/adafruit/Adafruit-GFX-Library), [Adafruit SSD1306](https://github.com/adafruit/Adafruit_SSD1306), and Adafruit BusIO provide display support.
+- ESP32 Arduino and PlatformIO provide the framework and build system.
 
-## 📊 System Status Report
+Third-party notices in the submodule are preserved. The upstream Doom Nano snapshot has no repository-wide license file, and its external sprite permissions are not established by this project. No project-wide license file currently exists for MINI-DOOM; original project code is therefore not granted an open-source license by this README. License selection and asset-rights review remain release blockers.
 
-### Hardware Status
+### Project media needed
 
-| Component | Status | Details |
-|-----------|--------|---------|
-| **ESP32** | ✓ OK | 240 MHz, 2 cores, 520KB SRAM |
-| **Flash** | ✓ OK | 4 MB available |
-| **I2C Bus** | ✓ OK | GPIO21/22, 100kHz |
-| **OLED Display** | ✓ OK | SSD1306, 128x64, 0x3C auto-detect |
-| **Serial Monitor** | ✓ OK | COM7, 115200 baud |
-
-### Memory Status
-
-| Type | Size | Status |
-|------|------|--------|
-| **Total SRAM** | 520 KB | ✓ Sufficient |
-| **Free Heap (Boot)** | ~270 KB | ✓ Adequate |
-| **Doom Buffer** | 1 KB | ✓ Reserved |
-| **Margin** | ~269 KB | ✓ Safe |
-
-### Feature Status
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| **MODE_DIAG** | ✓ Ready | System diagnostics |
-| **MODE_I2C_SCAN** | ✓ Ready | Device detection |
-| **MODE_OLED_TEST** | ✓ Ready | Display validation |
-| **MODE_DOOM** | ✓ Ready | Stub, Phase 2 pending |
-| **Pre-Upload Script** | ✓ Ready | Port management |
-
----
-
-## 🛠️ Troubleshooting
-
-### OLED Not Detected
-
-**Symptoms:** "OLED not detected" message
-
-**Solutions:**
-1. Check I2C connections (GPIO21/22)
-2. Run `MODE_I2C_SCAN` to verify I2C communication
-3. Check OLED power supply (3.3V)
-
-### Upload Fails
-
-**Symptoms:** Serial port error, upload cannot start
-
-**Solutions:**
-1. Verify `upload_port = COM7` in `platformio.ini`
-2. Check physical USB connection
-3. Close any serial monitor before uploading
-4. Reset ESP32 (RESET button)
-
-### Watchdog Reset
-
-**Symptoms:** Frequent resets, "Task WDT" messages
-
-**Solutions:**
-1. Check for infinite loops
-2. Profile with `MODE_DIAG`
-3. Ensure all modules initialize correctly
-
----
-
-## 📚 References
-
-- [ESP32 Technical Reference](https://www.espressif.com/sites/default/files/documentation/esp32_technical_reference_manual_en.pdf)
-- [PlatformIO Documentation](https://docs.platformio.org/)
-- [Adafruit SSD1306 Library](https://github.com/adafruit/Adafruit_SSD1306)
-- [Doom Nano Source](https://github.com/daveruiz/doom-nano)
-
----
-
-## 📄 License & Notes
-
-- **Project:** mini-doom (Doom engine on ESP32)
-- **Target:** Doom Nano integration on ESP32+OLED
-- **Status:** Phase 1 (Testing & Validation) ✓ Complete
-- **Next Phase:** Phase 2 (Doom Nano Engine Integration)
-
----
-
-**Last Updated:** January 27, 2026  
-**Version:** 1.0 - Testing & Validation Pipeline Complete
-
-
+No genuine MINI-DOOM hardware screenshot is currently included. For a future visual update, capture a straight-on photo of the actual ESP32/OLED wiring and clear photos of the diagnostic border, title screen, and gameplay. Do not substitute upstream Arduino screenshots as images of this hardware.
