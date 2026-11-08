@@ -8,16 +8,11 @@
 // -D MODE_DIAG (padrão): diagnóstico do ESP32
 // -D MODE_I2C_SCAN: varredura I2C
 // -D MODE_OLED_TEST: teste completo com OLED
-// -D MODE_DOOM: pipeline gráfico (renderização isolada)
+// -D MODE_OLED_DIAG: padrões isolados de validação do OLED
+// -D MODE_DOOM: jogo completo
 
-#ifndef MODE_DIAG
-  #ifndef MODE_I2C_SCAN
-    #ifndef MODE_OLED_TEST
-      #ifndef MODE_DOOM
-        #define MODE_DIAG
-      #endif
-    #endif
-  #endif
+#if !defined(MODE_DIAG) && !defined(MODE_I2C_SCAN) && !defined(MODE_OLED_TEST) && !defined(MODE_OLED_DIAG) && !defined(MODE_DOOM)
+  #define MODE_DOOM
 #endif
 
 // ============================================================================
@@ -30,7 +25,7 @@
 
 // OLED Display Configuration
 #define OLED_WIDTH 128
-#define OLED_HEIGHT 32
+#define OLED_HEIGHT 64
 #define OLED_ADDRESS_PRIMARY 0x3C
 #define OLED_ADDRESS_SECONDARY 0x3D
 

@@ -3,6 +3,11 @@
 #include "oled_ui.h"
 #include <Arduino.h>
 
+static_assert(OLED_WIDTH == DOOM_WIDTH && OLED_HEIGHT == DOOM_HEIGHT,
+              "OLED and game framebuffer dimensions must match");
+static_assert(DOOM_BUFFER_SIZE == (OLED_WIDTH * OLED_HEIGHT) / 8,
+              "OLED and game framebuffer sizes must match");
+
 namespace DoomGraphics {
 
 // ============================================================
@@ -54,7 +59,8 @@ void clearBuffer() {
 }
 
 void blitBufferToOLED() {
-    // Get reference to the OLED display object
+    if (!OLEDUI::isInitialized()) return;
+
     Adafruit_SSD1306* displayPtr = OLEDUI::getDisplay();
     if (!displayPtr) return;
     
@@ -72,28 +78,11 @@ void blitBufferToOLED() {
 // ============================================================
 
 void setPixel(uint8_t x, uint8_t y, uint8_t color) {
-    if (x >= DOOM_WIDTH || y >= DOOM_HEIGHT) return;
-    
-    // SSD1306 page layout: 8 vertical pixels per byte
-    // byte_index = page_row * 128 + x_column
-    uint16_t byte_index = (y / 8) * DOOM_WIDTH + x;
-    uint8_t bit_index = y & 7;  // SSD1306 native page bit order (LSB = top pixel)
-    
-    if (color) {
-        g_framebuffer[byte_index] |= (1 << bit_index);
-    } else {
-        g_framebuffer[byte_index] &= ~(1 << bit_index);
-    }
+    SSD1306Framebuffer::setPixel(g_framebuffer, x, y, color);
 }
 
 uint8_t getPixel(uint8_t x, uint8_t y) {
-    if (x >= DOOM_WIDTH || y >= DOOM_HEIGHT) return 0;
-    
-    // SSD1306 page layout: 8 vertical pixels per byte
-    uint16_t byte_index = (y / 8) * DOOM_WIDTH + x;
-    uint8_t bit_index = y & 7;  // SSD1306 native page bit order (LSB = top pixel)
-    
-    return (g_framebuffer[byte_index] >> bit_index) & 1;
+    return SSD1306Framebuffer::getPixel(g_framebuffer, x, y);
 }
 
 // ============================================================

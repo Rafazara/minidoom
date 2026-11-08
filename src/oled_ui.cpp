@@ -45,19 +45,9 @@ bool initialize(uint8_t address) {
   display.ssd1306_command(0);
   display.ssd1306_command(7);
   
-  // Phase 4.0 RC + Display Fix: Force known-good orientation for SSD1306 panel variants
-  // Some SSD1306 panels have inverted COM scan or segment remap; explicitly set to known state
+  display.setRotation(0);
   display.clearDisplay();
-  display.setRotation(2);        // 180-degree rotation for proper framebuffer mapping
-  
-  // Apply explicit segment remap and COM scan direction (fixes garbled/inverted displays)
-  display.ssd1306_command(SSD1306_SEGREMAP | 0x01);   // Segment remap: column address 127→0
-  display.ssd1306_command(SSD1306_COMSCANDEC);        // COM scan: from COM63 to COM0 (normal)
-  display.display();             // Flush orientation fix to hardware
-  
-  #if MINI_DOOM_DEBUG
-  LOG_DEBUG("[OLED] Orientation fix applied (rotation=180, segremap, comscan)");
-  #endif
+  display.display();
   
   initialized = true;
   

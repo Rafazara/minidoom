@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "ssd1306_framebuffer.h"
 
 // Display dimensions
 #define DOOM_WIDTH 128
