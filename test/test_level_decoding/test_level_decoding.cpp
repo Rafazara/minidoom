@@ -2,10 +2,9 @@
 #include "doom_nano_level.h"
 
 void test_nibbles_and_inverted_rows() {
-    const uint8_t level[DoomNanoLevel::SIZE] = {
-        0xAB,
-        0xCD,
-    };
+    uint8_t level[DoomNanoLevel::SIZE] = {};
+    level[0] = 0xAB;
+    level[32] = 0xCD;
 
     TEST_ASSERT_EQUAL_UINT8(0xB, DoomNanoLevel::getBlock(level, 0, 56));
     TEST_ASSERT_EQUAL_UINT8(0xA, DoomNanoLevel::getBlock(level, 1, 56));
