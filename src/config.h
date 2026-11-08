@@ -30,7 +30,7 @@
 
 // OLED Display Configuration
 #define OLED_WIDTH 128
-#define OLED_HEIGHT 32
+#define OLED_HEIGHT 64
 #define OLED_ADDRESS_PRIMARY 0x3C
 #define OLED_ADDRESS_SECONDARY 0x3D
 
