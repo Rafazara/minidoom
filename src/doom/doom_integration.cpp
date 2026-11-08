@@ -8,7 +8,6 @@ namespace DoomIntegration {
 
 static bool initialized = false;
 static unsigned long frameCount = 0;
-static unsigned long lastTick = 0;
 
 void setup() {
   LOG_INFO("========================================");
@@ -40,7 +39,6 @@ void setup() {
   LOG_INFO("Doom: Free Heap after init: %d bytes", ESP.getFreeHeap());
   
   initialized = true;
-  lastTick = millis();
   frameCount = 0;
   
   LOG_INFO("Doom: Initialization complete ✓");
@@ -50,21 +48,15 @@ void setup() {
 }
 
 void loop() {
-  unsigned long now = millis();
-  
-  // Render frame at target FPS (20 FPS = 50ms per frame)
-  if (now - lastTick >= 50) {  // 50ms = 20 FPS
-    lastTick = now;
-    frameCount++;
-    
-    // Render single frame (includes world, sprites, HUD, dithering, blit)
-    DoomAdapter::renderFrame();
-    
-    // Log every 20 frames (~1 second at 20 FPS)
-    if (frameCount % 20 == 0) {
-      LOG_INFO("Doom: Frame #%lu | Free Heap: %d bytes", 
-               frameCount, ESP.getFreeHeap());
-    }
+  // The adapter enforces the 50ms interval; do not throttle a second time.
+  if (!initialized || !DoomAdapter::renderFrame()) return;
+
+  // Present every rendered state (TITLE / PLAYING / GAME_OVER), not only gameplay.
+  DoomGraphics::blitBufferToOLED();
+  frameCount++;
+  if (frameCount % 20 == 0) {
+    LOG_INFO("Doom: Frame #%lu | Free Heap: %d bytes",
+             frameCount, ESP.getFreeHeap());
   }
 }
 
