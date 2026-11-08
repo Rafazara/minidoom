@@ -23,6 +23,10 @@ static const char* test_descriptions[] = {
     "5-level gradient (Doom dithering simulation)",
     "Complete scene: walls + HUD + crosshair",
     "Scrolling pattern (animation, 8 frames)",
+    "One-pixel border rectangle",
+    "Four distinct corner markers",
+    "TOP text in the upper-left corner",
+    "Moving 8x8 square",
 };
 
 static const char* expected_results[] = {
@@ -40,17 +44,21 @@ static const char* expected_results[] = {
     "Gradient from top (light) to bottom (dark) with 5 shades",
     "Walls on sides, HUD at bottom, crosshair at center",
     "Pattern slowly moving across screen (or animating)",
+    "Continuous one-pixel border around all four edges",
+    "Square, horizontal, vertical, and diagonal markers in four corners",
+    "Readable upright TOP label at the upper left",
+    "Square moves left to right without flicker or stray pixels",
 };
 
 const char* getTestDescription(TestPattern pattern) {
-    if (pattern < 14) {
+    if (pattern >= 0 && pattern < TEST_PATTERN_COUNT) {
         return test_descriptions[pattern];
     }
     return "UNKNOWN PATTERN";
 }
 
 const char* getExpectedResult(TestPattern pattern) {
-    if (pattern < 14) {
+    if (pattern >= 0 && pattern < TEST_PATTERN_COUNT) {
         return expected_results[pattern];
     }
     return "UNKNOWN PATTERN";
@@ -62,22 +70,11 @@ const char* getExpectedResult(TestPattern pattern) {
 
 void fillFramebuffer(uint8_t* framebuffer, uint8_t value) {
     if (!framebuffer) return;
-    memset(framebuffer, value, 1024);
+    memset(framebuffer, value, SSD1306Framebuffer::SIZE);
 }
 
 void setPixelInBuffer(uint8_t* framebuffer, uint8_t x, uint8_t y, uint8_t color) {
-    if (!framebuffer) return;
-    if (x >= 128 || y >= 64) return;
-    
-    // SSD1306 format: page-based, LSB-first (after bit reversal fix)
-    uint16_t byte_index = (y / 8) * 128 + x;
-    uint8_t bit_index = y & 7;  // SSD1306 native page bit order
-    
-    if (color) {
-        framebuffer[byte_index] |= (1 << bit_index);
-    } else {
-        framebuffer[byte_index] &= ~(1 << bit_index);
-    }
+    SSD1306Framebuffer::setPixel(framebuffer, x, y, color);
 }
 
 void drawHLineInBuffer(uint8_t* framebuffer, uint8_t x0, uint8_t y, uint8_t length, uint8_t color) {
@@ -250,20 +247,73 @@ static bool testCompleteScene(uint8_t* fb) {
 
 static bool testScrollingPattern(uint8_t* fb) {
     fillFramebuffer(fb, 0x00);
-    
-    // Vertical bars that scroll
+
     static uint32_t frame = 0;
-    uint8_t offset = (frame / 6) % 8;  // Change every 6 frames (slow animation)
+    uint8_t offset = (frame / 6) % 8;
     frame++;
-    
+
     for (uint8_t y = 0; y < 64; y++) {
         for (uint8_t x = 0; x < 128; x++) {
-            // Vertical stripe pattern that shifts
             uint8_t stripe = ((x + offset) / 4) & 1;
             setPixelInBuffer(fb, x, y, stripe);
         }
     }
-    
+
+    return true;
+}
+
+static bool testBorder(uint8_t* fb) {
+    fillFramebuffer(fb, 0x00);
+    drawRectInBuffer(fb, 0, 0, 128, 64, 1);
+    return true;
+}
+
+static bool testCornerMarkers(uint8_t* fb) {
+    fillFramebuffer(fb, 0x00);
+
+    for (uint8_t y = 0; y < 4; y++) {
+        drawHLineInBuffer(fb, 0, y, 4, 1);
+    }
+    drawHLineInBuffer(fb, 120, 0, 8, 1);
+    drawHLineInBuffer(fb, 122, 2, 6, 1);
+    drawVLineInBuffer(fb, 0, 56, 8, 1);
+    drawVLineInBuffer(fb, 2, 58, 6, 1);
+    for (uint8_t i = 0; i < 8; i++) {
+        setPixelInBuffer(fb, 120 + i, 56 + i, 1);
+    }
+    return true;
+}
+
+static bool testTextOrientation(uint8_t* fb) {
+    static const uint8_t glyphs[3][5] = {
+        {0b111, 0b010, 0b010, 0b010, 0b010},
+        {0b111, 0b101, 0b101, 0b101, 0b111},
+        {0b111, 0b101, 0b111, 0b100, 0b100},
+    };
+
+    fillFramebuffer(fb, 0x00);
+    for (uint8_t c = 0; c < 3; c++) {
+        for (uint8_t y = 0; y < 5; y++) {
+            for (uint8_t x = 0; x < 3; x++) {
+                if (glyphs[c][y] & (1 << (2 - x))) {
+                    setPixelInBuffer(fb, 4 + c * 4 + x, 4 + y, 1);
+                }
+            }
+        }
+    }
+    drawHLineInBuffer(fb, 4, 11, 10, 1);
+    return true;
+}
+
+static bool testMovingShape(uint8_t* fb) {
+    static uint8_t frame = 0;
+    uint8_t x = (frame * 4) % 120;
+    frame++;
+
+    fillFramebuffer(fb, 0x00);
+    for (uint8_t y = 28; y < 36; y++) {
+        drawHLineInBuffer(fb, x, y, 8, 1);
+    }
     return true;
 }
 
@@ -277,12 +327,12 @@ bool runTest(TestPattern pattern) {
         Serial.println(F("[VALIDATION] ERROR: Framebuffer NULL"));
         return false;
     }
-    
+
     bool result = false;
-    
+
     Serial.printf("[VALIDATION] Running test: %s\r\n", getTestDescription(pattern));
     Serial.printf("[VALIDATION] Expected: %s\r\n", getExpectedResult(pattern));
-    
+
     switch (pattern) {
         case TEST_PATTERN_ALL_BLACK:
             result = testAllBlack(framebuffer);
@@ -325,6 +375,18 @@ bool runTest(TestPattern pattern) {
             break;
         case TEST_PATTERN_SCROLLING_PATTERN:
             result = testScrollingPattern(framebuffer);
+            break;
+        case TEST_PATTERN_BORDER:
+            result = testBorder(framebuffer);
+            break;
+        case TEST_PATTERN_CORNER_MARKERS:
+            result = testCornerMarkers(framebuffer);
+            break;
+        case TEST_PATTERN_TEXT_ORIENTATION:
+            result = testTextOrientation(framebuffer);
+            break;
+        case TEST_PATTERN_MOVING_SHAPE:
+            result = testMovingShape(framebuffer);
             break;
         default:
             Serial.printf("[VALIDATION] ERROR: Unknown pattern %d\r\n", pattern);

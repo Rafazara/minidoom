@@ -39,6 +39,8 @@ def before_upload(source, target, env):
         print("[PRE-UPLOAD] Active Mode:     MODE_DIAG (Diagnostics)")
     elif "MODE_I2C_SCAN" in str(build_flags):
         print("[PRE-UPLOAD] Active Mode:     MODE_I2C_SCAN (I2C Bus Scan)")
+    elif "MODE_OLED_DIAG" in str(build_flags):
+        print("[PRE-UPLOAD] Active Mode:     MODE_OLED_DIAG (OLED Pattern Diagnostics)")
     elif "MODE_OLED_TEST" in str(build_flags):
         print("[PRE-UPLOAD] Active Mode:     MODE_OLED_TEST (OLED Display Test)")
     elif "MODE_DOOM" in str(build_flags):
