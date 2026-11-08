@@ -1,5 +1,6 @@
 #include "doom_world_renderer.h"
 #include "doom_wall_textures.h"
+#include "doom_nano_level.h"
 #include <Arduino.h>
 #include <math.h>
 
@@ -92,7 +93,7 @@ static void drawDitheredVLine(
     // If no texture provided, use solid dithering (legacy)
     if (texture == nullptr) {
         for (int16_t y = y_min; y <= y_max; y++) {
-            uint8_t bit = 7 - (y & 7);
+            uint8_t bit = y & 7;
             uint16_t byte_idx = (y / 8) * RENDER_WIDTH + x;
             
             if (byte_idx >= 1024) continue;  // Out of bounds
@@ -150,27 +151,8 @@ static void drawDitheredVLine(
  * @param y: Map Y coordinate (0-56)
  * @return: Block type (0=empty, 15=wall, etc.)
  */
-static inline uint8_t getBlockAt(const uint8_t* level, uint8_t x, uint8_t y) {
-    // Level data format from Doom Nano: nibbles packed
-    // LEVEL_WIDTH = 64, LEVEL_HEIGHT = 57
-    // Each cell = 4 bits (one nibble)
-    // Row is 64/2 = 32 bytes
-    
-    if (x >= 64 || y >= 57 || level == nullptr) {
-        return 15;  // Return wall (safe default)
-    }
-    
-    uint16_t row_start = y * 32;  // 64 cells / 2 per byte = 32 bytes per row
-    uint8_t byte_pos = row_start + (x / 2);
-    uint8_t nibble_pos = (x & 1);
-    
-    uint8_t byte_val = level[byte_pos];
-    
-    if (nibble_pos == 0) {
-        return (byte_val >> 4) & 0x0F;  // High nibble
-    } else {
-        return byte_val & 0x0F;         // Low nibble
-    }
+static inline uint8_t getBlockAt(const uint8_t* level, int16_t x, int16_t y) {
+    return DoomNanoLevel::getBlock(level, x, y);
 }
 
 /**
@@ -238,7 +220,7 @@ static void raycaster(
             }
             
             // Check block type
-            uint8_t block = getBlockAt(level, (uint8_t)map_x, (uint8_t)map_y);
+            uint8_t block = getBlockAt(level, map_x, map_y);
             
             if (block == 0x0F) {  // Wall (0xF in Doom Nano)
                 hit = true;

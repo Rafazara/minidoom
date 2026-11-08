@@ -56,6 +56,13 @@ enum TestPattern {
     
     // Stage 6: Animation test
     TEST_PATTERN_SCROLLING_PATTERN = 13, // Moving pattern (8 frames)
+
+    // Stage 7: Display geometry and orientation
+    TEST_PATTERN_BORDER = 14,
+    TEST_PATTERN_CORNER_MARKERS = 15,
+    TEST_PATTERN_TEXT_ORIENTATION = 16,
+    TEST_PATTERN_MOVING_SHAPE = 17,
+    TEST_PATTERN_COUNT = 18,
 };
 
 /**

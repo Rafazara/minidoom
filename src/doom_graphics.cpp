@@ -3,6 +3,11 @@
 #include "oled_ui.h"
 #include <Arduino.h>
 
+static_assert(OLED_WIDTH == DOOM_WIDTH && OLED_HEIGHT == DOOM_HEIGHT,
+              "OLED and game framebuffer dimensions must match");
+static_assert(DOOM_BUFFER_SIZE == (OLED_WIDTH * OLED_HEIGHT) / 8,
+              "OLED and game framebuffer sizes must match");
+
 namespace DoomGraphics {
 
 // ============================================================
@@ -54,15 +59,17 @@ void clearBuffer() {
 }
 
 void blitBufferToOLED() {
-    // Get reference to the OLED display object
+    if (!OLEDUI::isInitialized()) return;
+
     Adafruit_SSD1306* displayPtr = OLEDUI::getDisplay();
     if (!displayPtr) return;
     
-    // Send framebuffer to OLED display using Adafruit's drawBitmap
-    // The SSD1306 display memory is organized as 8 pages (rows) of 128 bytes each
-    // Each byte contains 8 vertical pixels
-    displayPtr->clearDisplay();
-    displayPtr->drawBitmap(0, 0, g_framebuffer, DOOM_WIDTH, DOOM_HEIGHT, SSD1306_WHITE);
+    // Our framebuffer is already in the SSD1306 native page layout.
+    // drawBitmap() expects a different, row-major 1-bit bitmap format.
+    // Copy the exact 1024-byte native buffer instead of reinterpreting it.
+    uint8_t* oledBuffer = displayPtr->getBuffer();
+    if (!oledBuffer) return;
+    memcpy(oledBuffer, g_framebuffer, DOOM_BUFFER_SIZE);
     displayPtr->display();
 }
 
@@ -71,28 +78,11 @@ void blitBufferToOLED() {
 // ============================================================
 
 void setPixel(uint8_t x, uint8_t y, uint8_t color) {
-    if (x >= DOOM_WIDTH || y >= DOOM_HEIGHT) return;
-    
-    // SSD1306 page layout: 8 vertical pixels per byte
-    // byte_index = page_row * 128 + x_column
-    uint16_t byte_index = (y / 8) * DOOM_WIDTH + x;
-    uint8_t bit_index = 7 - (y & 7);  // MSB-first vertical addressing
-    
-    if (color) {
-        g_framebuffer[byte_index] |= (1 << bit_index);
-    } else {
-        g_framebuffer[byte_index] &= ~(1 << bit_index);
-    }
+    SSD1306Framebuffer::setPixel(g_framebuffer, x, y, color);
 }
 
 uint8_t getPixel(uint8_t x, uint8_t y) {
-    if (x >= DOOM_WIDTH || y >= DOOM_HEIGHT) return 0;
-    
-    // SSD1306 page layout: 8 vertical pixels per byte
-    uint16_t byte_index = (y / 8) * DOOM_WIDTH + x;
-    uint8_t bit_index = 7 - (y & 7);  // MSB-first vertical addressing
-    
-    return (g_framebuffer[byte_index] >> bit_index) & 1;
+    return SSD1306Framebuffer::getPixel(g_framebuffer, x, y);
 }
 
 // ============================================================

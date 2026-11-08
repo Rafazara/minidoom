@@ -15,6 +15,7 @@
 #include <string.h>
 #include <math.h>
 #include <pgmspace.h>
+#include "doom_nano_level.h"
 
 // Include level data and constants from Doom Nano
 #include "../third_party/doom-nano/level.h"
@@ -85,6 +86,10 @@ static uint8_t g_player_ammo = 30;  // Starting ammunition count
 
 // Level data will be stored in PROGMEM
 static const uint8_t* g_currentLevel = nullptr;
+
+static uint8_t getLevelBlock(double x, double y) {
+    return DoomNanoLevel::getBlock(g_currentLevel, x, y);
+}
 
 // ============================================================================
 // GAME TICK CONFIGURATION
@@ -222,12 +227,7 @@ void advanceGameTick() {
         double new_y = g_player.pos.y + g_player.dir.y * PLAYER_MOVE_SPEED;
 
         // Collision detection: check adjacent cell in movement direction
-        uint8_t next_cell_x = (uint8_t)(new_x);
-        uint8_t next_cell_y = (uint8_t)(new_y);
-        uint16_t level_idx = (next_cell_y * 64) + next_cell_x;
-        uint16_t byte_idx = level_idx / 2;
-        uint8_t cell_data = g_currentLevel[byte_idx];
-        uint8_t block_type = (level_idx % 2 == 0) ? (cell_data & 0x0F) : ((cell_data >> 4) & 0x0F);
+        uint8_t block_type = getLevelBlock(new_x, new_y);
 
         if (block_type == 0) {  // Empty cell
             g_player.pos.x = new_x;
@@ -243,12 +243,7 @@ void advanceGameTick() {
         double new_x = g_player.pos.x - g_player.dir.x * PLAYER_MOVE_SPEED;
         double new_y = g_player.pos.y - g_player.dir.y * PLAYER_MOVE_SPEED;
 
-        uint8_t next_cell_x = (uint8_t)(new_x);
-        uint8_t next_cell_y = (uint8_t)(new_y);
-        uint16_t level_idx = (next_cell_y * 64) + next_cell_x;
-        uint16_t byte_idx = level_idx / 2;
-        uint8_t cell_data = g_currentLevel[byte_idx];
-        uint8_t block_type = (level_idx % 2 == 0) ? (cell_data & 0x0F) : ((cell_data >> 4) & 0x0F);
+        uint8_t block_type = getLevelBlock(new_x, new_y);
 
         if (block_type == 0) {
             g_player.pos.x = new_x;
@@ -266,12 +261,7 @@ void advanceGameTick() {
         double new_x = g_player.pos.x + strafe_x;
         double new_y = g_player.pos.y + strafe_y;
 
-        uint8_t next_cell_x = (uint8_t)(new_x);
-        uint8_t next_cell_y = (uint8_t)(new_y);
-        uint16_t level_idx = (next_cell_y * 64) + next_cell_x;
-        uint16_t byte_idx = level_idx / 2;
-        uint8_t cell_data = g_currentLevel[byte_idx];
-        uint8_t block_type = (level_idx % 2 == 0) ? (cell_data & 0x0F) : ((cell_data >> 4) & 0x0F);
+        uint8_t block_type = getLevelBlock(new_x, new_y);
 
         if (block_type == 0) {
             g_player.pos.x = new_x;
@@ -285,12 +275,7 @@ void advanceGameTick() {
         double new_x = g_player.pos.x + strafe_x;
         double new_y = g_player.pos.y + strafe_y;
 
-        uint8_t next_cell_x = (uint8_t)(new_x);
-        uint8_t next_cell_y = (uint8_t)(new_y);
-        uint16_t level_idx = (next_cell_y * 64) + next_cell_x;
-        uint16_t byte_idx = level_idx / 2;
-        uint8_t cell_data = g_currentLevel[byte_idx];
-        uint8_t block_type = (level_idx % 2 == 0) ? (cell_data & 0x0F) : ((cell_data >> 4) & 0x0F);
+        uint8_t block_type = getLevelBlock(new_x, new_y);
 
         if (block_type == 0) {
             g_player.pos.x = new_x;
@@ -395,7 +380,8 @@ bool renderFrame() {
             LOG_INFO("[GAME] Transition TITLE -> PLAYING (player pressed FIRE)");
         }
 
-        return true;  // Title rendered, allow blit
+        DoomGraphics::blitBufferToOLED();
+        return true;
     }
 
     // STATE: GAME OVER
@@ -410,7 +396,8 @@ bool renderFrame() {
             LOG_INFO("[GAME] Transition GAME_OVER -> PLAYING (player pressed FIRE, state reset)");
         }
 
-        return true;  // Game over rendered, allow blit
+        DoomGraphics::blitBufferToOLED();
+        return true;
     }
 
     // STATE: PLAYING (only valid state reaches here)
@@ -445,7 +432,7 @@ bool renderFrame() {
     DoomGameFlow::update(millis());
 
     // Step 3: Clear framebuffer
-    memset(framebuffer, 0, 1024);
+    memset(framebuffer, 0, DOOM_BUFFER_SIZE);
 
     // Step 4: Spawn new wave if requested (Phase 2.15)
     if (DoomGameFlow::shouldSpawnWave()) {
@@ -475,7 +462,7 @@ bool renderFrame() {
 
     // Step 6: Copy raycasted world to graphics framebuffer
     const uint8_t* raycasted = DoomWorldRenderer::getWorldFramebuffer();
-    memcpy(framebuffer, raycasted, 1024);
+    memcpy(framebuffer, raycasted, DOOM_BUFFER_SIZE);
 
     // Step 7: Get depth buffer for combat and sprite occlusion testing
     const uint8_t* depth_buffer = DoomWorldRenderer::getDepthBuffer();
@@ -791,6 +778,9 @@ void resetGameState() {
     g_weapon_flash = false;
     g_screen_shake_x = 0;
     g_screen_shake_y = 0;
+    g_player_damage_flash = false;
+    g_player_damage_shake_x = 0;
+    g_player_damage_shake_y = 0;
     g_last_damage_enemy_x = 0.0;
     g_last_damage_enemy_y = 0.0;
 
@@ -828,13 +818,7 @@ void resetGameState() {
         g_player.dir.y
     );
 
-    // ========================================================================
-    // GAME FLOW STATE RESET (Phase 4.0: Ensures wave system resets)
-    // ========================================================================
-    // Guarantee: Wave state deterministically reset via flow system
-    // (DoomGameFlow::initialize() called during DoomAdapter::initialize())
-    // Note: Game flow system should have its own reset logic
-    // For now, respawning enemies implicitly resets wave to 1
+    DoomGameFlow::initialize();
     
     LOG_INFO("[GAME] ============================================");
     LOG_INFO("[GAME] Game state fully reset");

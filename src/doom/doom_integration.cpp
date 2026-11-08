@@ -33,6 +33,8 @@ void setup() {
     LOG_ERROR("Doom: OLED initialization FAILED");
   }
   
+  DoomGraphics::initialize();
+
   // Phase 2: Initialize Doom Adapter (game engine)
   LOG_INFO("Doom: Initializing Doom Adapter...");
   DoomAdapter::initialize();

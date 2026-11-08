@@ -136,10 +136,9 @@ static void drawSpriteScaled(
                 uint8_t final_pixel = ditherSpritePixel(tex_pixel, screen_col, screen_row);
                 
                 if (final_pixel) {
-                    // Set pixel in framebuffer (column-major layout)
-                    uint8_t byte_offset = screen_row / 8;
+                    // SSD1306 native page layout, shared with world/HUD.
                     uint8_t bit_offset = screen_row & 0x07;
-                    uint16_t fb_offset = (screen_col * 8) + byte_offset;
+                    uint16_t fb_offset = (screen_row / 8) * 128 + screen_col;
                     
                     framebuffer[fb_offset] |= (1 << bit_offset);
                 }
