@@ -7,6 +7,7 @@
  */
 
 #include "doom_sprite_renderer.h"
+#include "config.h"
 #include "doom_sprite_textures.h"
 #include "doom_adapter.h"
 #include "doom_feedback.h"
@@ -317,11 +318,15 @@ void renderWeapon(uint8_t* framebuffer) {
                         framebuffer[byte_idx] |= (1 << bit_idx);  // Set bit to white
                     }
                 }
+                #if MINI_DOOM_DEBUG
                 Serial.println(F("[SPRITE] Weapon FIRE rendered (Phase 3.2)"));
+                #endif
             } else {
                 // Normal weapon rendering with idle texture
                 drawSpriteScaled(framebuffer, screen_x, screen_y, texture, 1.5);
+                #if MINI_DOOM_DEBUG
                 Serial.println(F("[SPRITE] Weapon IDLE rendered (Phase 3.2)"));
+                #endif
             }
             
             return;
@@ -502,14 +507,18 @@ void renderSprites(
                 }
             }
             
+            #if MINI_DOOM_DEBUG
             Serial.printf("[SPRITE] Enemy %d HIT state rendered (Phase 3.2)\r\n", sprite.enemy_id);
+            #endif
         } else {
             // Normal sprite rendering with appropriate state texture (Phase 3.2)
             const uint8_t* texture = getTexture(sprite.texture_id, sprite.enemy_state);
             drawSpriteScaled(framebuffer, screen_x, screen_y, texture, scale);
             
+            #if MINI_DOOM_DEBUG
             Serial.printf("[SPRITE] Enemy %d IDLE rendered at col=%d, dist=%.1f (Phase 3.2)\r\n",
                          sprite.enemy_id, screen_col, sprite_dist);
+            #endif
         }
     }
 }
