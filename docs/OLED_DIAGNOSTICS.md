@@ -2,7 +2,7 @@
 
 ## Investigation status
 
-The OLED responds at `0x3C` from a previous physical scan, and previous tests produced illuminated but fragmented/horizontal output. No firmware from this recovery has been flashed or observed on the display. Software corrections are verified by inspection and compilation only.
+The OLED responds at `0x3C` from a previous physical scan, and earlier tests produced illuminated but fragmented/horizontal output. The user has now confirmed that the corrected OLED diagnostic firmware works on the physical device. This establishes general physical validation of the diagnostic path; it does not archive a pattern-by-pattern checklist or validate gameplay, controls, timing, or stability.
 
 An older hardware report concluded that a bicolor SSD1306 clone was responsible. That report is historical evidence, not proof of the identity or behavior of the currently attached module. The diagnostic below is intended to separate software mapping from panel/controller problems.
 
@@ -16,7 +16,7 @@ The game and overlays use 128×64 SSD1306 page data. An earlier blit passed that
 
 Before this recovery, `config.h` constructed the Adafruit display as 128×32. Its internal buffer was therefore 512 bytes, while the new game blit copied 1,024 bytes. This was a confirmed 512-byte heap overwrite and also selected the wrong SSD1306 COM-pin initialization. The display height is now 64, and compile-time assertions require matching dimensions.
 
-This is a confirmed current-branch defect and a plausible cause of corruption. It is not evidence that every previously observed hardware symptom is resolved.
+This confirmed defect was a plausible cause of corruption. The later user-confirmed diagnostic success supports the correction, but does not validate gameplay or replace the detailed visual checklist.
 
 ### Inconsistent orientation handling
 
@@ -28,7 +28,7 @@ Title and game-over states generated pixels but returned before the only blit ca
 
 ### Map decoding mismatch
 
-World rendering and collision disagreed about row order and nibble order. Both now use the tested shared Doom Nano decoder. This affects world/collision correctness, not the electrical integrity of the OLED.
+World rendering and collision disagreed about row order and nibble order. Both now use the shared Doom Nano decoder, which has dedicated host-test coverage. This affects world/collision correctness, not the electrical integrity of the OLED.
 
 ## Isolated diagnostic mode
 

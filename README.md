@@ -1,51 +1,61 @@
+```text
+┌────────────────────────────────────────────┐
+│ ███╗   ███╗██╗███╗   ██╗██╗                │
+│ ████╗ ████║██║████╗  ██║██║                │
+│ ██╔████╔██║██║██╔██╗ ██║██║                │
+│ ██║╚██╔╝██║██║██║╚██╗██║██║                │
+│ ██║ ╚═╝ ██║██║██║ ╚████║██║                │
+│ ╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚═╝                │
+│               D O O M                      │
+│      BIG DEMONS. TINY PIXELS.              │
+└────────────────────────────────────────────┘
+```
+
 # MINI-DOOM
 
-A tiny Doom-inspired embedded game for ESP32 and monochrome OLED displays.
+**Um FPS inspirado em Doom em uma telinha monocromática de 128×64 pixels.**
 
-MINI-DOOM combines a raycasting world, sprites, combat, a HUD, and title/game-over screens on a 128×64 display. It uses selected Doom Nano data and ideas; it is **not a port of the original Doom engine**.
+MINI-DOOM explora raycasting, sprites, framebuffer 1-bit e arquitetura de jogos em um **ESP32 DOIT DevKit V1** com **OLED SSD1306 I²C**. É um projeto de engenharia embarcada e retrocomputação — não um port do engine original do Doom.
 
-## Status
+## Status do projeto
 
-**Development baseline — software build recovered, hardware validation pending.**
-
-- The `esp32doit-devkit-v1` firmware and isolated OLED diagnostic both compile.
-- Host test sources cover framebuffer packing and Doom Nano map decoding; the current Windows host lacks the GCC tools needed to run them.
-- No firmware from this recovery work has been uploaded or visually validated on the OLED.
-- A 20 FPS target is configured, but physical frame rate is not validated. The conservative 100 kHz I²C setting cannot transfer a full 1,024-byte frame within 50 ms.
-
-See [release status](docs/RELEASE_STATUS.md) for the current decision and blockers.
-
-## Capabilities
-
-Source inspection confirms implementations for:
-
-- 128×64, 1-bit SSD1306 page-format rendering.
-- Raycast walls with textures and ordered dithering.
-- Enemy and weapon sprites with a per-column depth buffer.
-- Movement, collision, combat, health, ammunition, and wave logic.
-- Title, gameplay, and game-over states.
-- Compile-time game and isolated OLED diagnostic environments.
-
-These are implementation capabilities, not a claim that every feature has passed hardware testing.
-
-## Hardware baseline
-
-| Component | Validated configuration |
+| Frente | Estado atual |
 |---|---|
-| MCU board | ESP32 DOIT DevKit V1; ESP32-D0WDQ6 observed during previous uploads |
-| Flash | 4 MB reported by PlatformIO |
-| Display | 128×64 SSD1306-compatible I²C OLED |
-| OLED address | `0x3C`, confirmed by a previous physical I²C scan |
-| I²C data | GPIO21 |
-| I²C clock | GPIO22 |
-| Power | OLED VCC at 3.3 V, common GND |
-| USB serial | COM7 previously used; 115200 baud monitor |
+| Compilação ESP32 | **PASS** — firmware principal e diagnóstico compilam |
+| Diagnóstico OLED no hardware | **PASS** — funcionamento confirmado pelo usuário no hardware corrigido |
+| Gameplay no hardware | **PENDENTE** — controles, combate, waves e reset ainda não têm validação completa |
+| Testes automatizados locais | **BLOQUEADO** — o host Windows não possui GCC/G++; a CI executa a suíte nativa |
+| Release | **PARTIAL** — baseline recuperada; não é uma versão final validada |
 
-Only the ESP32 and OLED are part of the confirmed baseline. Buttons, speakers, batteries, and other peripherals are optional future work, not assumed to be installed.
+O diagnóstico valida o caminho de exibição, não todo o jogo. O alvo de 20 FPS é uma configuração, **não uma medição**.
 
-## Wiring
+## Por que este projeto existe?
 
-| OLED pin | ESP32 connection |
+Executar um jogo em primeira pessoa em uma tela de 128×64 pixels exige decisões diferentes das de um PC. Cada byte do framebuffer importa, cada transferência I²C consome tempo e cada pixel precisa chegar à posição certa.
+
+MINI-DOOM transforma essas restrições em um pequeno laboratório jogável:
+
+- raycasting para criar paredes com perspectiva;
+- dithering para sugerir tonalidades em apenas duas cores;
+- sprites com oclusão por profundidade;
+- HUD, combate, waves e telas de estado;
+- diagnósticos separados para testar o display sem executar o jogo.
+
+O ponto de partida utiliza dados e conceitos do [Doom Nano](https://github.com/daveruiz/doom-nano), com adaptação própria para ESP32 e Adafruit SSD1306.
+
+## Hardware
+
+| Componente | Configuração confirmada |
+|---|---|
+| Placa | ESP32 DOIT DevKit V1; ESP32-D0WDQ6 observado em uploads anteriores |
+| Flash | 4 MB reportados pelo PlatformIO |
+| Display | OLED 128×64 I²C, compatível com SSD1306 |
+| Endereço I²C | `0x3C`, confirmado por scan físico |
+| SDA / SCL | GPIO21 / GPIO22 |
+| Alimentação do OLED | 3.3 V e GND comum |
+| Monitor serial | 115200 baud; COM7 era a porta local utilizada |
+
+| Pino do OLED | Conexão no ESP32 |
 |---|---|
 | GND | GND |
 | VCC | 3.3V |
@@ -53,28 +63,66 @@ Only the ESP32 and OLED are part of the confirmed baseline. Buttons, speakers, b
 | SDA | GPIO21 |
 
 ```text
-ESP32 DOIT DevKit V1                 OLED module
+ESP32 DOIT DevKit V1                 OLED 128×64
 +-------------------+                +-----------+
 | 3.3V              |--------------->| VCC       |
 | GND               |--------------->| GND       |
 | GPIO22 (SCL)      |--------------->| SCL/SCK   |
 | GPIO21 (SDA)      |--------------->| SDA       |
-| USB               |<-- data/power--| Host PC   |
+| USB               |<-- dados e alimentação --- PC
 +-------------------+                +-----------+
 ```
 
-Power down before changing wiring. ESP32 GPIO uses 3.3 V logic. See [the hardware guide](docs/HARDWARE.md) for power and safety notes.
+Somente ESP32 e OLED formam o baseline confirmado. Botões, buzzer, bateria e case não são presumidos. Desligue a alimentação antes de alterar a fiação; o ESP32 usa lógica de 3.3 V.
+
+Detalhes e segurança: [docs/HARDWARE.md](docs/HARDWARE.md).
+
+## Como funciona
+
+```text
+Entrada opcional
+      |
+      v
+DoomAdapter — estados, movimento, combate e reset
+      |
+      +--> Raycasting --> framebuffer do mundo + depth buffer
+      |
+      +--> Sprites ----+
+      +--> HUD --------+--> framebuffer final de 1.024 bytes
+      +--> Efeitos ----+             |
+                                     v
+                         Cópia exata para o buffer Adafruit
+                                     |
+                                     v
+                              Wire / I²C / OLED
+```
+
+O framebuffer usa o formato nativo de páginas do SSD1306: cada byte contém oito pixels verticais. Não há conversão por `drawBitmap()` no caminho principal.
+
+A arquitetura completa está em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Funcionalidades e evidências
+
+| Funcionalidade | Implementação | Build | Hardware |
+|---|---|---|---|
+| Framebuffer 128×64 e diagnóstico OLED | Implementada | PASS | **PASS no diagnóstico** |
+| Raycasting, texturas e dithering | Implementada | PASS | Pendente no gameplay |
+| Sprites, arma e depth buffer | Implementada | PASS | Pendente |
+| TITLE / PLAYING / GAME_OVER | Implementada | PASS | Pendente |
+| Movimento, colisão e combate | Implementada | PASS | Pendente |
+| Vida, munição, waves e reset | Implementada | PASS | Pendente |
+| Entrada por cinco botões opcionais | Implementada | PASS | Não confirmada conectada |
 
 ## Quick start
 
-### Prerequisites
+### Pré-requisitos
 
-- PlatformIO Core available as `pio`.
-- Git with submodule support.
-- ESP32 board and OLED wired as above.
-- A USB data cable.
+- Git com suporte a submodules.
+- Python suportado e PlatformIO Core (`pio`).
+- ESP32 e OLED conectados conforme a tabela.
+- Cabo USB de dados.
 
-### Clone and build
+### Clonar e compilar
 
 ```powershell
 git clone --recurse-submodules https://github.com/Rafazara/minidoom.git
@@ -83,131 +131,145 @@ git submodule update --init --recursive
 pio run -e esp32doit-devkit-v1
 ```
 
-The configuration pins Espressif32 6.12.0, Adafruit GFX 1.13.0, and Adafruit SSD1306 2.5.17 to limit dependency drift.
+As versões de Espressif32, Adafruit GFX e Adafruit SSD1306 estão fixadas em `platformio.ini`.
 
-### Upload and monitor
+### Compilar o diagnóstico
 
-Check `upload_port` and `monitor_port` in `platformio.ini`; COM7 is a previous local setting, not a universal value. Close other serial-monitor sessions before uploading.
+```powershell
+pio run -e esp32doit-devkit-v1-oled-diag
+```
+
+### Upload e monitor
+
+Revise `upload_port` e `monitor_port` antes do upload. COM7 é apenas a configuração local conhecida.
 
 ```powershell
 pio run -e esp32doit-devkit-v1 -t upload
 pio device monitor -p COM7 -b 115200
 ```
 
-Do not interpret a successful upload as a display-validation pass. Record the actual OLED behavior and serial output.
+Consulte [docs/BUILD_AND_FLASH.md](docs/BUILD_AND_FLASH.md) para builds limpos e solução de problemas.
 
-More detail: [Build and flash](docs/BUILD_AND_FLASH.md).
+## Diagnóstico OLED
 
-## Controls
+O ambiente isolado apresenta telas apagada/cheia, pixels de referência, linhas, grid, checkerboard, borda, marcadores de canto, texto e um quadrado móvel, sem inicializar AI ou combate.
 
-The firmware contains optional active-low button mappings using internal pull-ups:
+**Resultado físico atual:** o usuário confirmou que o firmware OLED corrigido funcionou no hardware. Isso estabelece o diagnóstico como validado em escopo geral; não substitui o checklist por padrão nem valida o gameplay.
 
-| Action | GPIO |
-|---|---|
-| Forward | 32 |
-| Backward | 33 |
-| Strafe left | 25 |
-| Strafe right | 26 |
-| Fire / start / restart | 27 |
-
-No buttons are confirmed connected in the current hardware baseline. Without a Fire button, the normal game build remains on the title screen. Wiring and debounce behavior require physical validation before controls are described as working.
-
-## Architecture
-
-```text
-Input GPIO
-    |
-    v
-DoomAdapter: state, movement, combat, reset
-    |
-    +--> DoomWorldRenderer --> world framebuffer + depth buffer
-    |
-    +--> Sprite renderer --> composite framebuffer
-    +--> HUD / title / game-over / feedback overlays
-    |
-    v
-DoomGraphics: 128x64 page-format framebuffer
-    |
-    |  exact 1,024-byte copy; no bitmap reformatting
-    v
-Adafruit_SSD1306 heap buffer --> Wire / I2C --> OLED
-```
-
-There are two project-owned 1,024-byte framebuffers: one for the world renderer and one for final composition. Adafruit SSD1306 allocates its own display buffer during `begin()`.
-
-See [Architecture](docs/ARCHITECTURE.md) and [Portability](docs/PORTABILITY.md).
-
-## Memory and performance
-
-Measured for the recovered default build on this host:
-
-| Metric | Result |
-|---|---:|
-| Static RAM reported by PlatformIO | 24,516 / 327,680 bytes (7.5%) |
-| Flash | 329,185 / 1,310,720 bytes (25.1%) |
-| Target frame rate | 20 FPS / 50 ms |
-| I²C clock | 100 kHz |
-
-PlatformIO's RAM figure does not include the display buffer allocated at runtime by Adafruit SSD1306. At 100 kHz, a full-frame transfer alone takes roughly 90 ms including protocol overhead, so 20 FPS requires hardware measurement and likely a validated faster I²C configuration. No physical FPS claim is made.
-
-## OLED diagnostic mode
-
-The isolated diagnostic does not run game logic. It cycles through blank/filled screens, coordinates, lines, checkerboard, border, distinct corner markers, text orientation, and a moving square.
-
-After obtaining approval to flash the device:
+Para reproduzir:
 
 ```powershell
 pio run -e esp32doit-devkit-v1-oled-diag -t upload
 pio device monitor -p COM7 -b 115200
 ```
 
-Return to the game by uploading the default environment:
+Para retornar ao jogo:
 
 ```powershell
 pio run -e esp32doit-devkit-v1 -t upload
 ```
 
-No source edit is needed to switch environments. Follow the observation checklist in [OLED diagnostics](docs/OLED_DIAGNOSTICS.md).
+Checklist e interpretação: [docs/OLED_DIAGNOSTICS.md](docs/OLED_DIAGNOSTICS.md).
+
+## Controles opcionais
+
+O firmware mapeia botões active-low com pull-ups internos:
+
+| Ação | GPIO |
+|---|---|
+| Frente | 32 |
+| Trás | 33 |
+| Strafe esquerdo | 25 |
+| Strafe direito | 26 |
+| Fire / iniciar / reiniciar | 27 |
+
+Nenhum botão está confirmado no baseline atual. Sem Fire, o firmware normal permanece em TITLE.
+
+## Memória e desempenho
+
+| Medição do build principal | Resultado |
+|---|---:|
+| RAM estática reportada | 24.516 / 327.680 bytes (**7,5%**) |
+| Flash | 329.185 / 1.310.720 bytes (**25,1%**) |
+| Framebuffers do projeto | 2 × 1.024 bytes, estáticos |
+| Buffer Adafruit adicional | 1.024 bytes alocados em runtime |
+| Alvo configurado | 20 FPS / 50 ms |
+| Clock I²C atual | 100 kHz |
+
+A RAM reportada pelo PlatformIO não inclui todas as alocações de runtime. A 100 kHz, transferir um frame inteiro leva aproximadamente 90 ms ou mais com overhead; portanto 20 FPS não é alcançável nessa configuração. Qualquer aumento do clock exige validação elétrica e no display.
+
+## Testes e CI
+
+```powershell
+pio test -e native
+```
+
+As suítes cobrem offsets, bit packing, limites do framebuffer e decodificação do mapa. No host Windows de recuperação, GCC/G++ não estão disponíveis. O workflow de GitHub Actions compila os dois firmwares e executa esses testes em Ubuntu; o resultado verificável aparece nos checks do PR.
+
+Veja [docs/TESTING.md](docs/TESTING.md) e [docs/RELEASE_STATUS.md](docs/RELEASE_STATUS.md).
+
+## Galeria
+
+Ainda não há fotografias próprias do hardware MINI-DOOM no repositório. As imagens dentro de `third_party/doom-nano` pertencem ao projeto upstream e não são apresentadas como fotos desta montagem.
+
+Para completar a galeria com evidências reais:
+
+- foto frontal do ESP32 + OLED na breadboard;
+- diagnóstico com borda e cantos visíveis;
+- TITLE legível;
+- gameplay real com HUD;
+- detalhe da fiação SDA/SCL e alimentação;
+- case somente se um for efetivamente construído.
 
 ## Troubleshooting
 
-- **`avr/pgmspace.h` missing:** build the current recovery tree; the compatibility wrapper must be under `include/avr/pgmspace.h` and the submodule must be initialized.
-- **OLED not detected:** power down, verify 3.3 V/GND and SDA/SCL, then run an I²C scan. Address detection alone does not prove controller compatibility.
-- **Horizontal bands or fragmented graphics:** run the isolated diagnostic and record blank, filled, border, and corner results. Do not start by changing rotation.
-- **Blank title in normal mode:** verify that the firmware includes the title flush fix and that no I²C initialization error appears.
-- **Upload failed:** confirm the actual COM port and close serial-monitor programs.
-- **Native tests do not build:** install or expose a supported GCC/G++ host toolchain; the current host does not provide one.
+| Problema | Ação inicial |
+|---|---|
+| `avr/pgmspace.h` não encontrado | Inicialize o submodule e use a árvore atual; o wrapper está em `include/avr/pgmspace.h` |
+| Display configurado como 128×32 | Use `OLED_HEIGHT=64`; assertions bloqueiam divergência do framebuffer |
+| OLED não detectado | Verifique 3.3 V, GND, SDA=21, SCL=22 e endereço `0x3C` |
+| Porta de upload indisponível | Confira a porta real, feche monitors e revise `platformio.ini` |
+| OLED apagado ou corrompido | Execute o diagnóstico isolado antes de alterar gameplay ou orientação |
+| Dependências PlatformIO variando | Use as versões fixadas e preserve o submodule; não atualize tudo indiscriminadamente |
+| Testes nativos não compilam no Windows | Disponibilize GCC/G++ ou use o job Ubuntu da CI |
 
-## Development roadmap
+## Histórico de desenvolvimento
 
-1. Run the OLED diagnostic on the physical module and capture each required result.
-2. Run the host tests with a supported native compiler.
-3. Validate normal title, gameplay, game-over, and reset behavior on hardware.
-4. Measure frame time and heap during gameplay; evaluate I²C speed only after the display is stable.
-5. Resolve project and upstream asset licensing before a public release.
-6. Prepare a release candidate only after the acceptance criteria pass.
+- Integração inicial de ESP32, I²C, OLED e Doom Nano.
+- Construção incremental de raycasting, sprites, HUD, estados, combate e waves.
+- Investigação de corrupção do OLED e revisão do formato do framebuffer.
+- Recuperação da compatibilidade AVR→ESP32 e correção do overflow de 512 bytes.
+- Diagnóstico OLED corrigido confirmado no hardware pelo usuário.
+- Consolidação da documentação, testes nativos e automação de builds.
 
-## Documentation
+Os relatórios históricos na raiz foram preservados; os guias em `docs/` são a referência atual.
 
-- [Hardware and wiring](docs/HARDWARE.md)
-- [Build and flash](docs/BUILD_AND_FLASH.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [AVR-to-ESP32 portability](docs/PORTABILITY.md)
-- [OLED diagnostics](docs/OLED_DIAGNOSTICS.md)
-- [Testing and acceptance](docs/TESTING.md)
-- [Release status](docs/RELEASE_STATUS.md)
+## Roadmap
 
-Root-level phase reports are retained as historical development records. The guides above describe the current maintained baseline.
+1. Validar TITLE, movimento, combate, GAME_OVER e reset no hardware.
+2. Arquivar o checklist visual por padrão e fotos reais do dispositivo.
+3. Medir FPS, tempo de render/I²C, heap livre e estabilidade prolongada.
+4. Controlar o log serial no caminho de release.
+5. Revisar permissões dos sprites upstream e demais obrigações de terceiros.
+6. Preparar uma release candidate somente após os critérios de aceite.
 
-## Credits and licensing
+## Documentação
 
-- [Doom Nano](https://github.com/daveruiz/doom-nano) by David Ruiz and contributors, included as a Git submodule at the pinned upstream revision.
-- Doom Nano credits raycasting learning material to [lodev.org](https://lodev.org/cgtutor) and identifies external sprite sources in its README.
-- [Adafruit GFX](https://github.com/adafruit/Adafruit-GFX-Library), [Adafruit SSD1306](https://github.com/adafruit/Adafruit_SSD1306), and Adafruit BusIO provide display support.
-- ESP32 Arduino and PlatformIO provide the framework and build system.
+- [Arquitetura](docs/ARCHITECTURE.md)
+- [Hardware e fiação](docs/HARDWARE.md)
+- [Build e flash](docs/BUILD_AND_FLASH.md)
+- [Diagnóstico OLED](docs/OLED_DIAGNOSTICS.md)
+- [Portabilidade AVR/ESP32](docs/PORTABILITY.md)
+- [Testes](docs/TESTING.md)
+- [Status de release](docs/RELEASE_STATUS.md)
 
-Third-party notices in the submodule are preserved. The upstream Doom Nano snapshot has no repository-wide license file, and its external sprite permissions are not established by this project. No project-wide license file currently exists for MINI-DOOM; original project code is therefore not granted an open-source license by this README. License selection and asset-rights review remain release blockers.
+## Créditos e licença
 
-### Project media needed
+O código original de MINI-DOOM é distribuído sob a [MIT License](LICENSE), já existente na branch padrão do repositório.
 
-No genuine MINI-DOOM hardware screenshot is currently included. For a future visual update, capture a straight-on photo of the actual ESP32/OLED wiring and clear photos of the diagnostic border, title screen, and gameplay. Do not substitute upstream Arduino screenshots as images of this hardware.
+- [Doom Nano](https://github.com/daveruiz/doom-nano) — David Ruiz e contribuidores; submodule fixado pelo superprojeto.
+- Doom Nano credita o material de raycasting de [lodev.org](https://lodev.org/cgtutor) e identifica fontes externas de sprites em seu README.
+- [Adafruit GFX](https://github.com/adafruit/Adafruit-GFX-Library), [Adafruit SSD1306](https://github.com/adafruit/Adafruit_SSD1306) e Adafruit BusIO.
+- Arduino ESP32 e PlatformIO.
+
+A licença MIT do projeto não substitui notices nem direitos de terceiros. O snapshot upstream não possui uma licença repository-wide, e as permissões dos sprites externos ainda precisam de revisão. Doom e seus assets pertencem aos respectivos titulares; nenhuma afiliação ou endosso é reivindicado.

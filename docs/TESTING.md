@@ -42,7 +42,7 @@ Run:
 pio test -e native
 ```
 
-Current status: **BLOCKED BY HOST TOOLCHAIN**. PlatformIO collected both test suites, but `gcc` and `g++` are not installed or not on PATH. No assertions executed, so no automated test PASS is claimed.
+Local status: **BLOCKED BY HOST TOOLCHAIN**. PlatformIO collected both test suites, but `gcc` and `g++` are not installed or not on PATH on the Windows recovery host. No local assertions executed, so no local test PASS is claimed. `.github/workflows/firmware.yml` runs `pio test -e native` on Ubuntu; use the PR check result for the CI execution evidence.
 
 ## Static inspection completed
 

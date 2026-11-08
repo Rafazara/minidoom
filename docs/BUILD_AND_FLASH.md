@@ -87,7 +87,7 @@ The diagnostic environment does not require editing `build_flags` and does not e
 pio test -e native
 ```
 
-A host GCC/G++ toolchain must be discoverable by PlatformIO. On the recovery machine, test discovery succeeded but compilation stopped because `gcc` and `g++` were unavailable. No test pass is claimed.
+A host GCC/G++ toolchain must be discoverable by PlatformIO. On the recovery machine, test discovery succeeded but compilation stopped because `gcc` and `g++` were unavailable. No local test pass is claimed. The GitHub Actions workflow runs the same command on Ubuntu with the native compiler available.
 
 ## PlatformIO/Python environment findings
 

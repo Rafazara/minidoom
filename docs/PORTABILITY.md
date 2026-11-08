@@ -44,7 +44,7 @@ The solution does not modify the Doom Nano submodule. Upstream `level.h`, `sprit
 
 The superproject records Doom Nano from <https://github.com/daveruiz/doom-nano.git> at submodule revision `234640478b38f16558b34b543ef6ff14b72e3fb2`. No local third-party source patch is part of this recovery.
 
-The upstream snapshot contains no repository-wide license file. Individual bundled display/TWI sources retain their own notices. External sprite rights are not established. These limitations must not be hidden by project documentation.
+The original MINI-DOOM project code uses the MIT License already present on the repository's default branch; `LICENSE` is preserved unchanged in this recovery tree. The upstream Doom Nano snapshot contains no repository-wide license file. Individual bundled display/TWI sources retain their own notices, and external sprite rights are not established. The project license does not override these third-party limitations.
 
 ## Shared map decoder
 
