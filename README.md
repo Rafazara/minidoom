@@ -1,3 +1,28 @@
+# Mini DOOM — ESP32 + OLED (experimental)
+
+**Status:** firmware under development; full gameplay and physical OLED validation are **not yet confirmed**. This is a DOOM-like raycasting game based on [Doom Nano](https://github.com/daveruiz/doom-nano), **not the original id Software DOOM engine**.
+
+**Where is the code?** The complete PlatformIO project is on the `master` branch. The default `main` branch is a placeholder and currently does not contain the firmware. This review branch contains proposed fixes awaiting a physical test; do not merge it as a verified release.
+
+## Quick setup
+
+```sh
+git clone --branch master --recurse-submodules https://github.com/Rafazara/minidoom.git
+cd minidoom
+pio run
+# Confirm the correct serial port; platformio.ini currently defaults to COM7.
+pio run -t upload
+pio device monitor -b 115200
+```
+
+Hardware target: ESP32 DOIT DevKit V1, SSD1306 OLED **128 × 64**, I²C SDA GPIO21 / SCL GPIO22, plus game-control buttons (see `src/input.cpp`). The default `MODE_DOOM` build requires the FIRE button to begin playing. A temporary `-D VALIDATION_MODE` flag can auto-enter the game for bench tests; do not use that flag to claim real controls were verified.
+
+**Before calling it ready for HANGARBYTE:** confirm the actual OLED resolution and image orientation, all buttons, gameplay, stability, build and upload on physical hardware, and record a photo/video. Review third-party code, assets and their licenses separately; the repository's own MIT file does not grant rights to external Doom Nano assets or DOOM trademarks.
+
+---
+
+## Previous engineering notes (historical; some statuses may be outdated)
+
 # mini-doom: ESP32 + OLED + Doom Nano Integration
 
 **Objective:** Professional test, validation, and execution pipeline for Doom Nano on ESP32 before full integration.
