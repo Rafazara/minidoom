@@ -71,7 +71,7 @@ void setPixelInBuffer(uint8_t* framebuffer, uint8_t x, uint8_t y, uint8_t color)
     
     // SSD1306 format: page-based, LSB-first (after bit reversal fix)
     uint16_t byte_index = (y / 8) * 128 + x;
-    uint8_t bit_index = 7 - (y % 8);  // MSB-first for display compatibility
+    uint8_t bit_index = y & 7;  // SSD1306 native page bit order
     
     if (color) {
         framebuffer[byte_index] |= (1 << bit_index);

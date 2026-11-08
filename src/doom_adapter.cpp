@@ -445,7 +445,7 @@ bool renderFrame() {
     DoomGameFlow::update(millis());
 
     // Step 3: Clear framebuffer
-    memset(framebuffer, 0, 1024);
+    memset(framebuffer, 0, DOOM_BUFFER_SIZE);
 
     // Step 4: Spawn new wave if requested (Phase 2.15)
     if (DoomGameFlow::shouldSpawnWave()) {
@@ -475,7 +475,7 @@ bool renderFrame() {
 
     // Step 6: Copy raycasted world to graphics framebuffer
     const uint8_t* raycasted = DoomWorldRenderer::getWorldFramebuffer();
-    memcpy(framebuffer, raycasted, 1024);
+    memcpy(framebuffer, raycasted, DOOM_BUFFER_SIZE);
 
     // Step 7: Get depth buffer for combat and sprite occlusion testing
     const uint8_t* depth_buffer = DoomWorldRenderer::getDepthBuffer();

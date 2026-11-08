@@ -32,7 +32,7 @@ bool initialize(uint8_t address) {
   LOG_INFO("[OLED] Initialize: Driver responding, configuring display...");
   
   // STEP 1 — FORCE SSD1306 INTO HORIZONTAL ADDRESSING MODE
-  // This matches the framebuffer layout used by Adafruit_SSD1306::drawBitmap()
+  // The rendering pipeline copies native page data directly to getBuffer().
   display.ssd1306_command(SSD1306_MEMORYMODE);
   display.ssd1306_command(0x00);  // Horizontal addressing mode
   
@@ -43,7 +43,7 @@ bool initialize(uint8_t address) {
   
   display.ssd1306_command(SSD1306_PAGEADDR);
   display.ssd1306_command(0);
-  display.ssd1306_command(3);
+  display.ssd1306_command(7);
   
   // Phase 4.0 RC + Display Fix: Force known-good orientation for SSD1306 panel variants
   // Some SSD1306 panels have inverted COM scan or segment remap; explicitly set to known state

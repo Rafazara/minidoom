@@ -6,9 +6,9 @@
 
 // Display dimensions
 #define DOOM_WIDTH 128
-#define DOOM_HEIGHT 32
-#define DOOM_BYTES_PER_ROW (DOOM_WIDTH / 8)  // 16 bytes per row
-#define DOOM_BUFFER_SIZE (DOOM_BYTES_PER_ROW * DOOM_HEIGHT)  // 512 bytes
+#define DOOM_HEIGHT 64
+#define DOOM_BYTES_PER_ROW DOOM_WIDTH  // SSD1306 page layout: one byte per x-column
+#define DOOM_BUFFER_SIZE (DOOM_WIDTH * DOOM_HEIGHT / 8)  // 1024 bytes for 128x64
 
 // FPS control
 #define DOOM_TARGET_FPS 20
@@ -28,7 +28,7 @@ void initialize();
 
 /**
  * Get reference to the framebuffer (1-bit format, 128x64)
- * Each byte contains 8 pixels (MSB = leftmost)
+ * SSD1306 native page layout: offset = (y / 8) * 128 + x, bit = y & 7.
  */
 uint8_t* getFramebuffer();
 

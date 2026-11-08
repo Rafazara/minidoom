@@ -92,7 +92,7 @@ static void drawDitheredVLine(
     // If no texture provided, use solid dithering (legacy)
     if (texture == nullptr) {
         for (int16_t y = y_min; y <= y_max; y++) {
-            uint8_t bit = 7 - (y & 7);
+            uint8_t bit = y & 7;
             uint16_t byte_idx = (y / 8) * RENDER_WIDTH + x;
             
             if (byte_idx >= 1024) continue;  // Out of bounds
